@@ -1,34 +1,33 @@
 
-name: Java Maven CI and Docker CD
+name: EvenOdd CI CD Pipeline
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   pull_request:
-    branches:
-      - main
+    branches: [main]
 
 jobs:
-  build-test-docker:
+  build-and-test:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout GitHub Repository
+      - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Set up JDK 17
+      - name: Setup Java
         uses: actions/setup-java@v4
         with:
-          java-version: '17'
           distribution: temurin
+          java-version: '17'
           cache: maven
 
-      - name: Build Maven Project and Run Tests
+      - name: Build and Test
         run: mvn clean package
 
       - name: Build Docker Image
-        run: docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/evenodd-ci:latest .
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: docker build -t evenodd-ci:latest .
 
       - name: Login to Docker Hub
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -37,6 +36,10 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Push Docker Image to Docker Hub
+      - name: Tag Docker Image
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: docker tag evenodd-ci:latest ${{ secrets.DOCKERHUB_USERNAME }}/evenodd-ci:latest
+
+      - name: Push Docker Image
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: docker push ${{ secrets.DOCKERHUB_USERNAME }}/evenodd-ci:latest
